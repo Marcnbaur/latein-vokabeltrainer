@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Latein-Vokabeltrainer</title>
+<style>
+  @font-face {
+    font-family: "Cinzel";
+    src: url("cinzel.woff2") format("woff2");
+    font-weight: 400 900;
+    font-display: swap;
+  }
+  :root {
+    --tinte: #2e2520;
+    --tinte-hell: #6b5a48;
+    --rot: #7a1f1f;
+    --rot-hell: #9a2a26;
+    --gold: #b8892d;
+    --gold-hell: #e3c06a;
+    --gold-dunkel: #8a6420;
+    --lorbeer: #4a7a2c;
+    --marmor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1600' height='1600'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='turbulence' baseFrequency='0.004 0.011' numOctaves='5' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.41 0 0 0 0 0.36 -1.3 0 0 0 0.32'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)'/%3E%3C/svg%3E");
+    --maeander: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M0 18H20M18 18V2H4V14H14V6H8V10' fill='none' stroke='%23b8892d' stroke-width='1.8'/%3E%3C/svg%3E");
+    --titel: "Cinzel", "Trajan Pro", "Palatino Linotype", Georgia, serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    font-family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    font-size: 17px;
+    line-height: 1.45;
+    color: var(--tinte);
+    background-color: #ebe5da;
+    background-image: var(--marmor), radial-gradient(ellipse at 50% 0%, #fbf8f2 0%, #e9e2d5 70%, #ddd4c4 100%);
+    background-size: cover, auto;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+  }
+
+  /* ---------- Karte ---------- */
+  .karte {
+    position: relative;
+    width: 100%;
+    max-width: 500px;
+    padding: 50px 34px 44px;
+    background: linear-gradient(165deg, rgba(255,255,255,0.93), rgba(248,243,234,0.9)), var(--marmor) center / cover no-repeat, #faf7f1;
+    border: 1px solid var(--gold);
+    outline: 1px solid rgba(184,137,45,0.5);
+    outline-offset: -9px;
+    border-radius: 6px;
+    box-shadow: 0 24px 50px -22px rgba(60,40,20,0.45), 0 2px 6px rgba(60,40,20,0.12);
+  }
+  .karte::before, .karte::after {
+    content: "";
+    position: absolute;
+    left: 18px;
+    right: 18px;
+    height: 12px;
+    background: var(--maeander) repeat-x center / 12px 12px;
+    opacity: 0.85;
+  }
+  .karte::before { top: 18px; }
+  .karte::after  { bottom: 18px; transform: scaleY(-1); }
+  .karte > * { animation: auftauchen 0.4s ease-out both; }
+
+  /* ---------- Typografie ---------- */
+  h1, h2, .info, .haupt, .beenden, .punkte, .bewertung, .eyebrow, .wort, .fehler-titel {
+    font-family: var(--titel);
+  }
+  h1 {
+    margin: 0;
+    font-size: clamp(1.55rem, 6vw, 2.05rem);
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    line-height: 1.2;
+    text-align: center;
+    color: var(--rot);
+    text-shadow: 0 1px 0 #fff;
+  }
+  h2 {
+    margin: 4px 0 22px;
+    font-size: clamp(1.15rem, 4.6vw, 1.4rem);
+    font-weight: 600;
+    line-height: 1.35;
+    text-align: center;
+  }
+  .eyebrow {
+    margin: 0 0 6px;
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.45em;
+    color: var(--gold-dunkel);
+  }
+  .ornament {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin: 12px 0 18px;
+    color: var(--gold);
+    font-size: 0.95rem;
+  }
+  .ornament::before, .ornament::after {
+    content: "";
+    width: 70px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--gold));
+  }
+  .ornament::after { transform: scaleX(-1); }
+  .untertitel { text-align: center; color: var(--tinte-hell); margin: 0 0 24px; }
+  .wort { font-weight: 700; color: var(--rot); letter-spacing: 0.03em; }
+
+  /* ---------- Kopfzeile, Info, Fortschritt ---------- */
+  .kopfzeile { display: flex; justify-content: space-between; align-items: center; margin: -6px 0 14px; }
+  .info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--tinte-hell);
+  }
+  .balken {
+    height: 10px;
+    margin-bottom: 26px;
+    background: #efe7d8;
+    border: 1px solid rgba(184,137,45,0.45);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .balken-fuellung {
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, #9c7424, var(--gold-hell) 60%, var(--gold));
+    border-radius: 999px;
+    transition: width 0.45s ease-out;
+  }
+
+  /* ---------- Buttons allgemein ---------- */
+  button {
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:disabled { cursor: default; }
+  button:focus-visible { outline: 2px solid var(--rot); outline-offset: 3px; }
+
+  /* ---------- Antwort-Buttons ---------- */
+  .antworten { display: grid; gap: 11px; }
+  .antwort {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    min-height: 54px;
+    padding: 13px 18px 13px 24px;
+    text-align: left;
+    font-size: 1.12rem;
+    background: linear-gradient(180deg, #fffdf9, #f3ece0);
+    border: 1px solid #d8c8a8;
+    border-radius: 4px;
+    box-shadow: inset 0 1px 0 #fff, 0 2px 4px rgba(60,40,20,0.08);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease, opacity 0.25s;
+  }
+  .antwort::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 5px;
+    background: var(--gold);
+    transform: scaleY(0);
+    transition: transform 0.2s ease;
+  }
+  @media (hover: hover) {
+    .antwort:hover:not(:disabled) {
+      transform: translateY(-2px);
+      border-color: var(--gold);
+      background: linear-gradient(180deg, #fff, #f8efdd);
+      box-shadow: 0 0 0 1px var(--gold), 0 10px 18px -10px rgba(122,31,31,0.45);
+    }
+    .antwort:hover:not(:disabled)::before { transform: scaleY(1); }
+  }
+  .antwort:active:not(:disabled) { transform: scale(0.98); }
+  .antwort:disabled:not(.richtig):not(.falsch) { opacity: 0.5; }
+
+  .richtig {
+    background: linear-gradient(180deg, #f0f7e9, #dcebcc);
+    border-color: var(--lorbeer);
+    color: #2c4d18;
+    font-weight: 700;
+    animation: triumph 0.6s ease-out;
+  }
+  .richtig::before { transform: scaleY(1); background: var(--lorbeer); }
+  .falsch {
+    background: linear-gradient(180deg, #fbeeec, #f2d5d1);
+    border-color: var(--rot);
+    color: var(--rot);
+    font-weight: 700;
+    animation: wackeln 0.45s ease-in-out;
+  }
+  .falsch::before { transform: scaleY(1); background: var(--rot); }
+
+  /* ---------- Haupt-Buttons ---------- */
+  .haupt {
+    display: block;
+    width: 100%;
+    min-height: 54px;
+    margin-top: 22px;
+    padding: 14px 18px;
+    text-align: center;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #fdf6e3;
+    background: linear-gradient(180deg, var(--rot-hell), #6a1917);
+    border: 1px solid #5a1412;
+    border-radius: 4px;
+    box-shadow: inset 0 0 0 1px rgba(227,192,106,0.55), 0 8px 16px -8px rgba(110,26,24,0.7);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+  }
+  .haupt.zweit {
+    margin-top: 10px;
+    color: var(--rot);
+    background: transparent;
+    border-color: var(--gold);
+    box-shadow: none;
+  }
+  @media (hover: hover) {
+    .haupt:hover:not(:disabled) {
+      transform: translateY(-2px);
+      filter: brightness(1.1);
+      box-shadow: inset 0 0 0 1px var(--gold-hell), 0 0 0 3px rgba(227,192,106,0.35), 0 12px 20px -8px rgba(110,26,24,0.7);
+    }
+    .haupt.zweit:hover { background: rgba(184,137,45,0.1); filter: none; }
+    .beenden:hover { color: var(--rot); border-color: var(--rot); }
+  }
+  .haupt:active:not(:disabled) { transform: scale(0.98); }
+  .modus-buttons { display: grid; gap: 12px; }
+  .modus-buttons .haupt { margin-top: 0; }
+  .beenden {
+    padding: 7px 12px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--tinte-hell);
+    background: rgba(255,255,255,0.6);
+    border: 1px solid #d8c8a8;
+    border-radius: 3px;
+    transition: color 0.18s, border-color 0.18s;
+  }
+
+  /* ---------- Ergebnis ---------- */
+  .punkte {
+    margin: 8px 0 6px;
+    text-align: center;
+    font-size: clamp(3rem, 15vw, 4.4rem);
+    font-weight: 900;
+    line-height: 1;
+    color: var(--rot);
+    text-shadow: 0 2px 0 var(--gold-hell), 0 6px 14px rgba(122,31,31,0.25);
+  }
+  .karte > .punkte { animation: punkte-pop 0.7s ease-out 0.15s both; }
+  .bewertung { margin: 0 0 22px; text-align: center; font-size: 1.15rem; font-weight: 600; }
+  .fehler-titel { margin: 0 0 10px; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tinte-hell); }
+  .fehlerliste { list-style: none; padding: 0 4px 0 0; margin: 0; max-height: 40vh; overflow-y: auto; }
+  .fehlerliste li {
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    background: rgba(255,255,255,0.75);
+    border: 1px solid #e3d7bf;
+    border-left: 4px solid var(--rot);
+    border-radius: 3px;
+  }
+  .nachweis { margin: 22px 0 0; text-align: center; font-size: 0.75rem; color: #8a7a68; }
+  .nachweis a { color: inherit; }
+  .versteckt { display: none; }
+
+  /* ---------- Startbildschirm: Stufe und Anzahl ---------- */
+  .abschnitt-titel {
+    margin: 0 0 10px;
+    text-align: center;
+    font-family: var(--titel);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--tinte-hell);
+  }
+  .stufen {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 22px;
+  }
+  .stufe, .chip {
+    background: linear-gradient(180deg, #fffdf9, #f3ece0);
+    border: 1px solid #d8c8a8;
+    border-radius: 4px;
+    box-shadow: inset 0 1px 0 #fff, 0 2px 4px rgba(60,40,20,0.08);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+  }
+  .stufe {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 12px 6px;
+    text-align: center;
+  }
+  .stufe strong {
+    font-family: var(--titel);
+    font-size: 0.86rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+  }
+  .stufe span { font-size: 0.78rem; color: var(--tinte-hell); line-height: 1.25; }
+  .chip {
+    min-width: 58px;
+    min-height: 46px;
+    padding: 8px 14px;
+    font-family: var(--titel);
+    font-size: 1rem;
+    font-weight: 700;
+  }
+  .stufe[aria-pressed="true"], .chip[aria-pressed="true"] {
+    border-color: var(--gold);
+    background: linear-gradient(180deg, #fff8e8, #f1e0b9);
+    box-shadow: 0 0 0 1px var(--gold), inset 0 0 0 1px #fff, 0 6px 14px -8px rgba(122,31,31,0.45);
+  }
+  .stufe[aria-pressed="true"] strong, .chip[aria-pressed="true"] { color: var(--rot); }
+  @media (hover: hover) {
+    .stufe:hover, .chip:hover { transform: translateY(-2px); border-color: var(--gold); }
+  }
+  .stufe:active, .chip:active { transform: scale(0.97); }
+  .anzahl {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+  }
+  .eigene {
+    width: 104px;
+    min-height: 46px;
+    padding: 8px 10px;
+    font: inherit;
+    font-size: 1rem;
+    text-align: center;
+    color: var(--tinte);
+    background: #fffdf9;
+    border: 1px solid #d8c8a8;
+    border-radius: 4px;
+    transition: border-color 0.18s, box-shadow 0.18s;
+  }
+  .eigene:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 2px rgba(184,137,45,0.35); }
+  .eigene.aktiv { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); color: var(--rot); font-weight: 700; }
+  .eigene.ungueltig { border-color: var(--rot); box-shadow: 0 0 0 1px var(--rot); }
+  .eingabe-hinweis {
+    min-height: 1.3em;
+    margin: 6px 0 14px;
+    text-align: center;
+    font-size: 0.82rem;
+    color: var(--rot);
+  }
+  .haupt:disabled { opacity: 0.45; cursor: not-allowed; transform: none; filter: none; }
+  .stufe-label {
+    font-family: var(--titel);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gold-dunkel);
+  }
+  .ergebnis-info {
+    margin: 0 0 6px;
+    text-align: center;
+    font-family: var(--titel);
+    font-size: 0.8rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--tinte-hell);
+  }
+
+  /* ---------- Intro-Vollbild ---------- */
+  .vollbild {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    width: 100vw;
+    height: 100vh;
+    animation: zoom 2s ease-in-out forwards;
+  }
+  .vollbild.flagge {
+    background: linear-gradient(to bottom,
+      #000 0 33.333%, #DD0000 33.333% 66.666%, #FFCE00 66.666% 100%);
+  }
+  img.vollbild {
+    object-fit: cover;
+    object-position: center 25%;
+    background: #ddd8cf;
+  }
+
+  /* ---------- Animationen ---------- */
+  @keyframes auftauchen {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes triumph {
+    0%   { transform: scale(1);    box-shadow: 0 0 0 0 rgba(227,192,106,0.8); }
+    35%  { transform: scale(1.05); }
+    100% { transform: scale(1);    box-shadow: 0 0 0 16px rgba(227,192,106,0); }
+  }
+  @keyframes punkte-pop {
+    0%   { opacity: 0; transform: scale(0.6); }
+    60%  { opacity: 1; transform: scale(1.08); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  @keyframes wackeln {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-8px); }
+    40% { transform: translateX(7px); }
+    60% { transform: translateX(-5px); }
+    80% { transform: translateX(3px); }
+  }
+  @keyframes zoom {
+    0%   { transform: scale(0.05); opacity: 0; }
+    10%  { opacity: 1; }
+    40%  { transform: scale(1); }
+    70%  { transform: scale(1); opacity: 1; }
+    100% { transform: scale(0.05); opacity: 0; }
+  }
+  @keyframes blende {
+    0%, 100% { opacity: 0; }
+    25%, 75% { opacity: 1; }
+  }
+
+  /* ---------- Handy ---------- */
+  @media (max-width: 520px) {
+    body { padding: 14px 10px; align-items: flex-start; font-size: 16px; }
+    .karte { padding: 44px 18px 38px; outline-offset: -7px; }
+    .karte::before, .karte::after { left: 14px; right: 14px; }
+    .karte::before { top: 15px; }
+    .karte::after  { bottom: 15px; }
+    .ornament::before, .ornament::after { width: 44px; }
+    .antwort { font-size: 1.08rem; }
+    .stufen { grid-template-columns: 1fr; }
+    .stufe { flex-direction: row; justify-content: space-between; align-items: baseline; padding: 12px 16px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .karte > *, .karte > .punkte, .richtig, .falsch { animation: none; }
+    .antwort, .haupt { transition: none; }
+    .vollbild { animation-name: blende; }
+  }
+</style>
+</head>
+<body>
+<main class="karte" id="app"></main>
+
+<script src="vokabeln.js"></script>
+<script>
+  const STUFEN_INFO = {
+    beginner:     { name: "Beginner",     text: "Grundwortschatz" },
+    intermediate: { name: "Intermediate", text: "Mittelstufe" },
+    professional: { name: "Professional", text: "Oberstufen-Lektüre" }
+  };
+  const MAX_FRAGEN = 300;
+
+  // Vokabeln aus vokabeln.js in Objekte umwandeln
+  const DATEN = typeof VOKABELN_STUFEN === "object"
+    ? Object.fromEntries(Object.entries(VOKABELN_STUFEN).map(([k, liste]) =>
+        [k, liste.map(([latein, deutsch, wortart, gruppe]) => ({ latein, deutsch, wortart, gruppe }))]))
+    : null;
+
+  const app = document.getElementById("app");
+  let fragen = [];
+  let aktuelleFrage = 0;
+  let punkte = 0;
+  let fehler = [];
+  let modus = "lat-de";      // "lat-de" oder "de-lat"
+  let stufe = "beginner";
+  let anzahlWahl = 10;       // gewählter Chip
+  let eigenText = "";        // Inhalt des Eingabefelds
+  let anzahl = 10;           // tatsächliche Anzahl im laufenden Quiz
+
+  const frageText = v => modus === "lat-de" ? v.latein : v.deutsch;
+  const loesung   = v => modus === "lat-de" ? v.deutsch : v.latein;
+
+  const esc = t => String(t).replace(/[&<>"']/g, z =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[z]);
+
+  // Fisher-Yates: gibt eine gemischte Kopie zurück
+  function mischen(array) {
+    const a = [...array];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // Einzelbedeutungen: "sich freuen, froh sein" -> ["freuen", "froh sein"]
+  function bedeutungen(deutsch) {
+    return deutsch
+      .replace(/\([^)]*\)/g, "")
+      .split(",")
+      .map(b => b.trim().toLowerCase().replace(/^sich /, ""))
+      .filter(Boolean);
+  }
+
+  // Synonym = gleiche Gruppe oder mindestens eine gemeinsame Bedeutung
+  function istSynonym(a, b) {
+    if (a.gruppe && a.gruppe === b.gruppe) return true;
+    const bb = bedeutungen(b.deutsch);
+    return bedeutungen(a.deutsch).some(x => bb.includes(x));
+  }
+
+  // 3 falsche Antworten aus derselben Stufe, keine Synonyme, bevorzugt gleiche Wortart
+  function waehleFalsche(frage) {
+    const liste = DATEN[stufe];
+    const feld = modus === "lat-de" ? "deutsch" : "latein";
+    const passt = v => v !== frage && v[feld] !== frage[feld] && !istSynonym(v, frage);
+    const kandidaten = [
+      ...mischen(liste.filter(v => passt(v) && v.wortart === frage.wortart)),
+      ...mischen(liste.filter(v => passt(v) && v.wortart !== frage.wortart))
+    ];
+    const gewaehlt = [];
+    for (const v of kandidaten) {
+      if (gewaehlt.length === 3) break;
+      if (gewaehlt.some(g => g[feld] === v[feld] || istSynonym(g, v))) continue;
+      gewaehlt.push(v);
+    }
+    // Notfall: falls zu wenige, nur noch auf verschiedene Texte achten
+    for (const v of kandidaten) {
+      if (gewaehlt.length === 3) break;
+      if (!gewaehlt.some(g => g[feld] === v[feld])) gewaehlt.push(v);
+    }
+    return gewaehlt;
+  }
+
+  function aktuelleAnzahl() {
+    if (eigenText.trim() === "") return anzahlWahl;
+    const n = Number(eigenText);
+    return Number.isInteger(n) && n >= 1 && n <= MAX_FRAGEN ? n : null;
+  }
+
+  function zeigeStart() {
+    if (!DATEN) {
+      app.innerHTML = `
+        <h1>Vokabeln fehlen</h1>
+        <div class="ornament" aria-hidden="true">✦</div>
+        <p class="untertitel">Die Datei <strong>vokabeln.js</strong> wurde nicht gefunden.<br>
+        Bitte lege sie in denselben Ordner wie diese HTML-Datei.</p>`;
+      return;
+    }
+    const gesamt = Object.values(DATEN).reduce((s, l) => s + l.length, 0);
+    app.innerHTML = `
+      <p class="eyebrow">S·P·Q·R</p>
+      <h1>Latein-Vokabeltrainer</h1>
+      <div class="ornament" aria-hidden="true">✦</div>
+      <p class="untertitel">${gesamt} Vokabeln · Multiple Choice</p>
+
+      <p class="abschnitt-titel">Stufe</p>
+      <div class="stufen">
+        ${Object.entries(STUFEN_INFO).map(([k, i]) => `
+          <button class="stufe" data-stufe="${k}" aria-pressed="false">
+            <strong>${i.name}</strong><span>${i.text}</span>
+          </button>`).join("")}
+      </div>
+
+      <p class="abschnitt-titel">Anzahl Fragen</p>
+      <div class="anzahl">
+        ${[10, 25, 50].map(n => `<button class="chip" data-anzahl="${n}" aria-pressed="false">${n}</button>`).join("")}
+        <input id="eigene" class="eigene" type="number" inputmode="numeric" min="1" max="${MAX_FRAGEN}"
+               placeholder="Eigene" aria-label="Eigene Anzahl, 1 bis ${MAX_FRAGEN}" value="${esc(eigenText)}">
+      </div>
+      <p class="eingabe-hinweis" id="hinweis" aria-live="polite"></p>
+
+      <p class="abschnitt-titel">Richtung wählen und starten</p>
+      <div class="modus-buttons">
+        <button class="haupt" id="lat-de">🏛️ Latein → Deutsch</button>
+        <button class="haupt" id="de-lat">Deutsch → Latein</button>
+      </div>
+      <p class="nachweis">Foto Caesar-Büste: Wilfredor,
+        <a href="https://commons.wikimedia.org/wiki/File:Bust_of_Julius_Caesar.jpg" target="_blank" rel="noopener">Wikimedia Commons</a> (CC0)</p>
+    `;
+
+    document.querySelectorAll(".stufe").forEach(b => {
+      b.onclick = () => { stufe = b.dataset.stufe; aktualisiereStart(); };
+    });
+    document.querySelectorAll(".chip").forEach(b => {
+      b.onclick = () => {
+        anzahlWahl = Number(b.dataset.anzahl);
+        eigenText = "";
+        document.getElementById("eigene").value = "";
+        aktualisiereStart();
+      };
+    });
+    document.getElementById("eigene").oninput = e => {
+      eigenText = e.target.value;
+      aktualisiereStart();
+    };
+    document.getElementById("lat-de").onclick = () => waehleModus("lat-de");
+    document.getElementById("de-lat").onclick = () => waehleModus("de-lat");
+    aktualisiereStart();
+  }
+
+  // Auswahlzustand anzeigen, ohne neu zu zeichnen (Eingabefeld behält Fokus)
+  function aktualisiereStart() {
+    document.querySelectorAll(".stufe").forEach(b =>
+      b.setAttribute("aria-pressed", String(b.dataset.stufe === stufe)));
+    const eigen = eigenText.trim() !== "";
+    document.querySelectorAll(".chip").forEach(b =>
+      b.setAttribute("aria-pressed", String(!eigen && Number(b.dataset.anzahl) === anzahlWahl)));
+    const feld = document.getElementById("eigene");
+    const n = aktuelleAnzahl();
+    feld.classList.toggle("aktiv", eigen && n !== null);
+    feld.classList.toggle("ungueltig", n === null);
+    document.getElementById("hinweis").textContent =
+      n === null ? `Bitte eine ganze Zahl von 1 bis ${MAX_FRAGEN} eingeben.` : "";
+    document.querySelectorAll(".modus-buttons .haupt").forEach(b => { b.disabled = n === null; });
+  }
+
+  function waehleModus(m) {
+    const n = aktuelleAnzahl();
+    if (n === null) return;
+    anzahl = n;
+    modus = m;
+    zeigeIntro();
+  }
+
+  function zeigeIntro() {
+    app.innerHTML = `<h2>${modus === "de-lat" ? "Deutsch → Latein" : "Ave! Latein → Deutsch"}</h2>`;
+
+    const overlay = modus === "de-lat"
+      ? Object.assign(document.createElement("div"), { className: "vollbild flagge" })
+      : Object.assign(document.createElement("img"), {
+          className: "vollbild",
+          src: "caesar-bueste.jpg",
+          alt: "Büste von Gaius Iulius Caesar"
+        });
+    if (modus === "de-lat") {
+      overlay.setAttribute("role", "img");
+      overlay.setAttribute("aria-label", "Deutschlandflagge");
+    }
+
+    let gestartet = false;
+    const weiter = () => {
+      if (gestartet) return;
+      gestartet = true;
+      overlay.remove();
+      starteQuiz();
+    };
+    overlay.addEventListener("animationend", weiter);
+    setTimeout(weiter, 2500); // Absicherung, falls animationend ausbleibt
+    document.body.appendChild(overlay);
+  }
+
+  function starteQuiz() {
+    const liste = DATEN[stufe];
+    fragen = mischen(liste).slice(0, Math.min(anzahl, liste.length));
+    aktuelleFrage = 0;
+    punkte = 0;
+    fehler = [];
+    zeigeFrage();
+  }
+
+  function zeigeFrage() {
+    const frage = fragen[aktuelleFrage];
+    const optionen = mischen([frage, ...waehleFalsche(frage)]);
+    const frageSatz = modus === "lat-de"
+      ? `Was bedeutet <span class="wort">${esc(frageText(frage))}</span>?`
+      : `Was heißt <span class="wort">${esc(frageText(frage))}</span> auf Latein?`;
+    const fortschritt = (aktuelleFrage / fragen.length) * 100;
+
+    app.innerHTML = `
+      <div class="kopfzeile">
+        <span class="stufe-label">${STUFEN_INFO[stufe].name}</span>
+        <button class="beenden" id="beenden">✕ Beenden</button>
+      </div>
+      <div class="info">
+        <span>Frage ${aktuelleFrage + 1} von ${fragen.length}</span>
+        <span id="punktestand">Punkte: ${punkte}</span>
+      </div>
+      <div class="balken"><div class="balken-fuellung" style="width:${fortschritt}%"></div></div>
+      <h2>${frageSatz}</h2>
+      <div class="antworten" id="antworten"></div>
+      <button class="haupt versteckt" id="weiter">
+        ${aktuelleFrage + 1 < fragen.length ? "Weiter" : "Ergebnis anzeigen"}
+      </button>
+    `;
+
+    const box = document.getElementById("antworten");
+    optionen.forEach(v => {
+      const btn = document.createElement("button");
+      btn.className = "antwort";
+      btn.textContent = loesung(v);
+      btn.dataset.wert = loesung(v);
+      btn.onclick = () => pruefeAntwort(btn);
+      box.appendChild(btn);
+    });
+
+    document.getElementById("beenden").onclick = zeigeStart;
+    document.getElementById("weiter").onclick = () => {
+      aktuelleFrage++;
+      if (aktuelleFrage < fragen.length) zeigeFrage();
+      else zeigeErgebnis();
+    };
+  }
+
+  function pruefeAntwort(gewaehlt) {
+    const frage = fragen[aktuelleFrage];
+    const buttons = document.querySelectorAll(".antwort");
+
+    buttons.forEach(btn => {
+      btn.disabled = true;
+      if (btn.dataset.wert === loesung(frage)) {
+        btn.classList.add("richtig");
+        btn.textContent = "✓ " + btn.dataset.wert;
+      }
+    });
+
+    if (gewaehlt.dataset.wert === loesung(frage)) {
+      punkte++;
+    } else {
+      gewaehlt.classList.add("falsch");
+      gewaehlt.textContent = "✗ " + gewaehlt.dataset.wert;
+      fehler.push(frage);
+    }
+
+    document.getElementById("punktestand").textContent = "Punkte: " + punkte;
+    const weiter = document.getElementById("weiter");
+    weiter.classList.remove("versteckt");
+    weiter.focus({ preventScroll: true });
+  }
+
+  function zeigeErgebnis() {
+    const prozent = Math.round((punkte / fragen.length) * 100);
+    let bewertung;
+    if (prozent >= 90) bewertung = "Optime! Hervorragend!";
+    else if (prozent >= 60) bewertung = "Bene! Gut gemacht!";
+    else bewertung = "Weiter üben – das wird!";
+
+    const fehlerHtml = fehler.length
+      ? `<p class="fehler-titel">Diese Vokabeln solltest du wiederholen (${fehler.length}):</p>
+         <ul class="fehlerliste">
+           ${fehler.map(v => `<li><span class="wort">${esc(v.latein)}</span> = ${esc(v.deutsch)}</li>`).join("")}
+         </ul>`
+      : `<p class="untertitel">Keine Fehler – perfekt!</p>`;
+
+    app.innerHTML = `
+      <div class="balken"><div class="balken-fuellung" style="width:100%"></div></div>
+      <h1>Ergebnis</h1>
+      <div class="ornament" aria-hidden="true">✦</div>
+      <div class="punkte">${punkte} / ${fragen.length}</div>
+      <p class="ergebnis-info">${STUFEN_INFO[stufe].name} · ${prozent} %</p>
+      <p class="bewertung">${bewertung}</p>
+      ${fehlerHtml}
+      <button class="haupt" id="nochmal">Nochmal spielen</button>
+      <button class="haupt zweit" id="wechseln">Zum Startbildschirm</button>
+    `;
+    document.getElementById("nochmal").onclick = zeigeIntro;
+    document.getElementById("wechseln").onclick = zeigeStart;
+  }
+
+  zeigeStart();
+</script>
+</body>
+</html>
